@@ -1,0 +1,25 @@
+{
+    "type": "COMPLEXBLOCK",
+    "points": [
+        {
+            "type": "BOTTOM",
+            "x": 75,
+            "y": 99
+        },
+        {
+            "type": "TOP",
+            "x": 75,
+            "y": 5
+        },
+        {
+            "type": "RIGHT",
+            "x": 144,
+            "y": 16
+        },
+        {
+            "type": "BOTTOMIN",
+            "x": 92,
+            "y": 33
+        }
+    ]
+}

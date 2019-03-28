@@ -1,0 +1,10 @@
+{
+    "type": "SIMPLEBLOCK",
+    "points": [
+        {
+            "type": "BOTTOM",
+            "x": 75,
+            "y": 33
+        }
+    ]
+}

@@ -1,0 +1,15 @@
+{
+    "type": "SIMPLEBLOCK",
+    "points": [
+        {
+            "type": "RIGHT",
+            "x": 94,
+            "y": 16
+        },
+        {
+            "type": "LEFT",
+            "x": 5,
+            "y": 16
+        }
+    ]
+}
