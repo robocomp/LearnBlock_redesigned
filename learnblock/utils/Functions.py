@@ -43,7 +43,7 @@ def getFunctions():
 
 
 def load_blocks_Config(file=None):
-    blocks = None
+    blocks = {}
     pathsConfig = [PATHFUNCTIONSCONF,
                    __localConfigPath
                    ]
@@ -53,22 +53,20 @@ def load_blocks_Config(file=None):
                 continue
             for f in os.listdir(path):
                 if os.path.splitext(f)[-1] == ".conf":
-                    f = os.path.join(path, f)
-                    with open(f, "rb") as f:
+                    file = os.path.join(path, f)
+                    with open(file, "rb") as f:
                         text = f.read()
-                    if blocks is None:
-                        blocks = json.loads(text)
-                    else:
-                        blocks += json.loads(text)
+                    readblock = json.loads(text)
+                    for b in readblock:
+                        for i in range(len(b["img"])):
+                            b["img"][i] = os.path.join(pathImgBlocks, b["img"][i])
+                    blocks[file] = readblock
     else:
         with open(file, "r") as f:
             text = f.read()
         blocks = json.loads(text)
-    for b in blocks:
-        for i in range(len(b["img"])):
-            b["img"][i] = os.path.join(pathImgBlocks, b["img"][i])
-
     return blocks
+
 
 
 if __name__ == '__main__':
@@ -78,6 +76,3 @@ if __name__ == '__main__':
     for x in nameconfigBlocks:
         if x not in functions:
             print(x)
-
-    # for _ in map(print, functions):
-    #     pass

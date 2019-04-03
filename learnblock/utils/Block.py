@@ -4,12 +4,12 @@ import cv2
 import os
 
 import numpy as np
-from PIL import ImageDraw
+from PIL import ImageDraw, Image
 from PySide2.QtCore import Signal, QObject
 
-from learnblock import textfont
 from learnblock.utils import CV2ImagetoPILImage, PILImagetoCV2Image
 from learnblock.utils.Types import BlockImgType, BlockType
+from learnblock.utils.font import Font
 
 
 def BlockPathtoConfigPath(_imgPath):
@@ -25,6 +25,7 @@ def ConfigPathtoBlockPath(_confPath):
 class Block:
 
     imgchanged = Signal()
+    resized = Signal()
     next_id = 0
 
     def __init__(self, _img, _text1: str, _text2: str, _vars: list, _type: BlockType, _typeIMG: BlockImgType, _id: int = None):
@@ -32,10 +33,11 @@ class Block:
         self._showImg = _img
         self._text1 = _text1
         self._text2 = _text2
-        self._vars = _vars
+        self.__vars = _vars
         self._type = _type
         self._typeIMG = _typeIMG
         self._blockSize = 34
+        self.textfont = Font()
         if _id is None:
             self._id = Block.next_id
             Block.next_id += 1
@@ -70,6 +72,7 @@ class Block:
         if self._blockSize != _blockSize:
             self._blockSize = _blockSize
             self.renderImgBlock()
+            self.resized.emit()
 
     @property
     def text1(self):
@@ -91,11 +94,11 @@ class Block:
 
     @property
     def vars(self):
-        return self._vars
+        return self.__vars
 
     @vars.setter
     def vars(self, _vars):
-        self._vars = _vars
+        self.__vars = _vars
         self.renderImgBlock()
 
     @property
@@ -114,8 +117,8 @@ class Block:
                 break
 
         text1 = self.text1 + varText
-        text1Size = textfont.getsize(text1)[0]
-        text2Size = textfont.getsize(self.text2)[0]
+        text1Size = self.textfont.font.getsize(text1)[0]
+        text2Size = self.textfont.font.getsize(self.text2)[0]
         textSize = max([text1Size, text2Size])
 
         if self._typeIMG is BlockImgType.COMPLEXBLOCK:
@@ -167,8 +170,8 @@ class Block:
         im = CV2ImagetoPILImage(im)
         draw = ImageDraw.Draw(im)
 
-        draw.text(xy=(15, 3), text=text1, fill=(0, 0, 0, 255), font=textfont)
-        draw.text((15, im.height - 35), self.text2, (0, 0, 0, 255), font=textfont)
+        draw.text(xy=(15, 3), text=text1, fill=(0, 0, 0, 255), font=self.textfont.font)
+        draw.text((15, im.height - 35), self.text2, (0, 0, 0, 255), font=self.textfont.font)
 
 
 

@@ -45,6 +45,9 @@ class Connection(object):
             self.__idConnected = None
         # self.changedConnection.emint()
 
+    def connected(self):
+        return self.__connect is not None
+
     def nextBottomConnect(self):
         if BlockType.BOTTOM in self.__parent.connections:
             return self.__parent.connections[BlockType.BOTTOM]

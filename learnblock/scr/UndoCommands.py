@@ -44,12 +44,16 @@ class AddCommand(QUndoCommand):
     def undo(self):
         self._scene.removeItem(self._item)
         self._scene.update()
+        if self._item.functionname == "main":
+            self._item._parent.setEnabled(True)
 
     def redo(self):
         self._scene.addItem(self._item, True)
         self._item.setPos(self._initialposition)
         self._scene.clearSelection()
         self._scene.update()
+        if self._item.functionname == "main":
+            self._item._parent.setEnabled(False)
 
 
 class DeleteCommand(QUndoCommand):
@@ -64,6 +68,11 @@ class DeleteCommand(QUndoCommand):
         self._item.c, self._item.cS = self._item.closestItem()
         self._item.connecting()
         self._scene.update()
+        if self._item.functionname == "main":
+            self._item._parent.setEnabled(False)
 
     def redo(self):
         self._scene.removeItem(self._item)
+        if self._item.functionname == "main":
+            self._item._parent.setEnabled(True)
+

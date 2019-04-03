@@ -1,3 +1,5 @@
+import copy
+
 import cv2
 import json
 import os
@@ -8,12 +10,13 @@ from PySide2.QtGui import QPaintEvent, QIcon
 from PySide2.QtWidgets import QPushButton
 
 from learnblock.scr.QGraphicsBlockItem import QGraphicsBlockItem
-from learnblock.utils import Language
 from learnblock.utils.Block import Block, ConfigPathtoBlockPath
 from learnblock.utils.Connection import Connection
+from learnblock.utils.Language import Language
 from learnblock.utils.Types import BlockType, VariableType, BlockImgType, ConnectionType, Colors
 from learnblock.utils.Variable import Variable
 from learnblock.utils.point import Point
+from learnblock.utils.Translations import Translations
 
 
 def str2hex(tmpFile):
@@ -22,7 +25,7 @@ def str2hex(tmpFile):
 
 class ButtonBlock(QPushButton, Block):
 
-    def __init__(self, _parent, _table, _row: int, _imgfileconf: str, _functionmame: str, _language: Language,
+    def __init__(self, _parent, _table, _row: int, _imgfileconf: str, _functionmame: str,
                  _translations: dict,
                  _tooltips: dict, _vars: list,
                  _type: BlockType):
@@ -30,15 +33,15 @@ class ButtonBlock(QPushButton, Block):
         self._table = _table
         self._row = _row
         self._Variables = []
-        self._translations = _translations
-        self._tooltips = _tooltips
+        self._translations = Translations(_translations)
+        self._tooltips = Translations(_tooltips)
         self._functionmame = _functionmame
         self._connections = {}
         self._imgfileconf = _imgfileconf
         self._imgfile = ConfigPathtoBlockPath(self._imgfileconf)
         self._typeImg = BlockImgType.SIMPLEBLOCK  # by default
         self._type = _type
-        self._language = _language
+        self._language = Language()
 
         _varstext = self.initVars(_vars=_vars)
         self.initConections()
@@ -55,9 +58,13 @@ class ButtonBlock(QPushButton, Block):
         self.clicked.connect(self.on_clickedButton)
 
     def changeLanguage(self):
-        self._translations.setdefault(self._language.language, self._functionmame)
+        _varstext = []
+        for v in self._Variables:
+            _varstext.append(v.getName())
+        self.vars =_varstext
+        # self._initTranslations()
         self.text1 = self._translations[self._language.language]
-        self._tooltips.setdefault(self._language.language, "")
+        # self._tooltips.setdefault(self._language.language, "")
         textTooltip = self.text1 + ": " + self._tooltips[self._language.language]
         textout = ""
         sizeline = 0
@@ -79,10 +86,16 @@ class ButtonBlock(QPushButton, Block):
                 _type = ConnectionType.fromString(p["type"])
                 self._connections[_type] = Connection(Point(p["x"], p["y"]), self, _type)
 
+    def _initTranslations(self):
+        if self._language.language.upper() not in self._translations.keys():
+            if self._language.language.lower() != "en":
+                    self._translations.setdefault(self._language.language.upper(), self._functionmame)
+            else:
+                self._translations.setdefault(self._language.language.upper(), self._functionmame)
+
     def _initIMG(self):
         t = [k._name_ for k in self._connections.keys()]
-        self._translations.setdefault(self._language.language, self._functionmame)
-
+        # self._initTranslations()
         # tmpFile = self._translations[self._language.language] + str(self._type) + str(self._typeImg) + str(
         #     len(self._connections)) + "".join(t)
         self.color = Colors.fromBlockType(self._type)
@@ -111,9 +124,10 @@ class ButtonBlock(QPushButton, Block):
         _varstext = []
         for v in _vars:
             value = VariableType.getValue(v["type"], v["default"])
-            variableInstance = Variable(v["type"], name=v["name"], default=value, translate=v["translate"])
+            v.setdefault("translate", {"EN": v["name"]})
+            variableInstance = Variable(v["type"], name=v["name"], default=value, translate=Translations(v["translate"]))
             self._Variables.append(variableInstance)
-            _varstext.append(variableInstance.getName(self._language.language))
+            _varstext.append(variableInstance.getName())
         return _varstext
 
     def updateIconSize(self):
@@ -138,8 +152,8 @@ class ButtonBlock(QPushButton, Block):
 
     def on_clickedButton(self):
         scene = self._parent.scene
-        item = QGraphicsBlockItem(_parent=self._parent, _imgfile=self.tmpFile, _functionname=self._functionmame,
-                                  _translations=self._translations, _vars=self._Variables,
-                                  _connections=self._connections_conf, _language=self._language, _type=self._type,
+        item = QGraphicsBlockItem(_parent=self, _imgfile=self.tmpFile, _functionname=self._functionmame,
+                                  _translations=self._translations, _vars=copy.copy(self._Variables),
+                                  _connections=self._connections_conf, _type=self._type,
                                   _typeIMG=self._typeImg)
         scene.addItem(item)

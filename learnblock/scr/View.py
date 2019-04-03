@@ -10,6 +10,7 @@ class View(QGraphicsView):
         self.zoom = None
         super(View, self).__init__(scene, parent)
         # QGraphicsView.__init__(self, scene, parent)
+        # self.scale(-1, 1)
 
     def setZoom(self, zoom):
         self.zoom = zoom

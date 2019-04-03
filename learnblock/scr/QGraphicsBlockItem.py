@@ -3,14 +3,17 @@ import json
 from PIL import Image
 from PySide2.QtGui import QMouseEvent
 from PySide2.QtCore import QObject, Qt, QPointF, QTimer
+from PySide2.QtGui import QPixmap
+from PySide2.QtGui import QImage
 from PySide2.QtWidgets import QGraphicsPixmapItem, QGraphicsItem, QMenu, QAction, QGraphicsSceneMouseEvent, \
     QGraphicsSceneHoverEvent
 
 from learnblock.scr.UndoCommands import DeleteCommand
-from learnblock.utils import Language, PILImagetoCV2Image
+from learnblock.utils import PILImagetoCV2Image
 from learnblock.utils.Block import Block
 from learnblock.utils.Connection import Connection
-from learnblock.utils.Types import BlockType, BlockImgType, ConnectionType
+from learnblock.utils.Language import Language
+from learnblock.utils.Types import BlockType, BlockImgType, ConnectionType, VariableType
 from learnblock.utils.point import Point
 
 
@@ -20,21 +23,24 @@ class KeyPressEater(QObject):
             return True
         return False
 
+
 class QGraphicsBlockItem(QGraphicsPixmapItem, Block, QObject):
 
-    def __init__(self, _parent, _imgfile: str, _functionname: str, _translations: dict, _vars: list, _connections: dict, _language: Language, _type: BlockType, _typeIMG: BlockImgType):
+    def __init__(self, _parent, _imgfile: str, _functionname: str, _translations: dict, _vars: list, _connections: dict,
+                 _type: BlockType, _typeIMG: BlockImgType, _nameControl: str = ""):
         self._parent = _parent
         self._translations = _translations
         self._vars = _vars
         self.initConections(_connections)
-        self._language = _language
+        self._language = Language()
         self.__functionname = _functionname
         self._type = _type
         self._typeImg = _typeIMG
+        self._nameControl = _nameControl
         self.c, self.cS = None, None
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.updateSize)
-        self.timer.start(100)
+        # self.timer = QTimer()
+        # self.timer.timeout.connect(self.updateSize)
+        # self.timer.start(100)
         QObject.__init__(self)
 
         QGraphicsPixmapItem.__init__(self)
@@ -42,7 +48,7 @@ class QGraphicsBlockItem(QGraphicsPixmapItem, Block, QObject):
 
         _varstext = self.listValuesVars()
 
-        Block.__init__(self, _img=img, _text1="", _text2="", _vars=_varstext, _type=self._type, _typeIMG=self._typeImg)
+        Block.__init__(self, _img=img, _text1="", _text2=self._nameControl, _vars=_varstext, _type=self._type, _typeIMG=self._typeImg)
 
         self.setFlag(QGraphicsItem.ItemIsMovable, True)
         self.setFlag(QGraphicsItem.ItemIsSelectable, True)
@@ -53,9 +59,14 @@ class QGraphicsBlockItem(QGraphicsPixmapItem, Block, QObject):
         self.imgchanged.connect(self.repaintImg)
         self.changeLanguage()
         super(QGraphicsBlockItem, self).setPos(QPointF(0, 0))
+        # self.setEnabled(False)
 
     def __str__(self):
         return str(self.id)
+
+    @property
+    def functionname(self):
+        return self.__functionname
 
     def initConections(self, conf):
         self._connections = {}
@@ -97,14 +108,12 @@ class QGraphicsBlockItem(QGraphicsPixmapItem, Block, QObject):
     def on_clicked_menu_duplicate(self):
         raise NotImplementedError("on_clicked_menu_export_block")
 
-
     def on_clicked_menu_delete(self):
         if self.scene() is not None:
             self.scene().undoStack.push(DeleteCommand(self, self.scene()))
             # self.scene().removeItem(self)
 
     def changeLanguage(self):
-        self._translations.setdefault(self._language.language, self.__functionname)
         self.text1 = self._translations[self._language.language]
 
     def repaintImg(self):
@@ -112,16 +121,21 @@ class QGraphicsBlockItem(QGraphicsPixmapItem, Block, QObject):
         for type, c in iter(self._connections.items()):
             otherConnect, otherId = c.connect
             if type is ConnectionType.BOTTOM:
-                c.point.move(0,  self.pixmap().height() - 5 - c.point.y)
+                c.point.move(0, self.pixmap().height() - 5 - c.point.y)
                 if otherId is not None:
                     otherConnect.parent.setPos(self.pos() + QPointF(0, self.pixmap().height() - 5), True)
             if type is ConnectionType.RIGHT:
-                c.point.move( self.pixmap().width() - 5 - c.point.x, 0)
+                c.point.move(self.pixmap().width() - 5 - c.point.x, 0)
                 if otherId is not None:
                     otherConnect.parent.setPos(self.pos() + QPointF(self.pixmap().width() - 5, 0), True)
 
     def updateSize(self):
         _, self.block_size = self.getNumSub()
+        self._resized()
+
+    def _resized(self):
+        if ConnectionType.TOP in self._connections and self._connections[ConnectionType.TOP].connected():
+            self._connections[ConnectionType.TOP].connect[0].parent.updateSize()
 
     def listValuesVars(self):
         return [str(v.value) for v in self._vars]
@@ -130,23 +144,39 @@ class QGraphicsBlockItem(QGraphicsPixmapItem, Block, QObject):
         selectedItems = self.scene().selectedItems()
         if self in selectedItems:
             for item in selectedItems:
-                item.hover = True
+                item.setHover(True)
         else:
-            self.hover = True
-
-
+            self.setHover(True)
 
     def hoverLeaveEvent(self, event: QGraphicsSceneHoverEvent):
         selectedItems = self.scene().selectedItems()
         if self in selectedItems:
             for item in selectedItems:
-                item.hover = False
+                item.setHover(False)
         else:
-            self.hover = False
+            self.setHover(False)
 
+    def setHover(self, hover):
+        self.hover = hover
+        if ConnectionType.BOTTOM in self._connections and self._connections[ConnectionType.BOTTOM].connected():
+            self._connections[ConnectionType.BOTTOM].connect[0].parent.setHover(hover)
+        if ConnectionType.RIGHT in self._connections and self._connections[ConnectionType.RIGHT].connected():
+            self._connections[ConnectionType.RIGHT].connect[0].parent.setHover(hover)
+        if ConnectionType.BOTTOMIN in self._connections and self._connections[ConnectionType.BOTTOMIN].connected():
+            self._connections[ConnectionType.BOTTOMIN].connect[0].parent.setHover(hover)
+
+    def setZValue(self, z: float):
+        super(QGraphicsBlockItem, self).setZValue(z)
+        if ConnectionType.BOTTOM in self._connections and self._connections[ConnectionType.BOTTOM].connected():
+            self._connections[ConnectionType.BOTTOM].connect[0].parent.setZValue(z)
+        if ConnectionType.RIGHT in self._connections and self._connections[ConnectionType.RIGHT].connected():
+            self._connections[ConnectionType.RIGHT].connect[0].parent.setZValue(z)
+        if ConnectionType.BOTTOMIN in self._connections and self._connections[ConnectionType.BOTTOMIN].connected():
+            self._connections[ConnectionType.BOTTOMIN].connect[0].parent.setZValue(z)
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
         if self.isEnabled():
+            self.setZValue(1)
             if event.button() is Qt.MouseButton.LeftButton:
                 pass
                 # self.posmouseinItem = event.scenePos() - self.pos()
@@ -159,15 +189,14 @@ class QGraphicsBlockItem(QGraphicsPixmapItem, Block, QObject):
                 self.popMenu.exec_(event.screenPos())
 
     def setPos(self, pos: QPointF, connect=False):
-
-        seletedItems = self.scene().selectedItems()
         super(QGraphicsBlockItem, self).setPos(pos)
         for type, c in iter(self._connections.items()):
             otherConnect, otherId = c.connect
             if otherId is not None:
-                if type in [ConnectionType.TOP, ConnectionType.LEFT] and self in seletedItems and not connect:
+                if type in [ConnectionType.TOP, ConnectionType.LEFT] and not connect:
                     c.connect = None
                     otherConnect.connect = None
+                    otherConnect.parent.updateSize()
                 elif c.type is ConnectionType.BOTTOM:
                     otherConnect.parent.setPos(self.pos() + QPointF(0, self.pixmap().height() - 5), True)
                 elif c.type is ConnectionType.BOTTOMIN:
@@ -175,8 +204,8 @@ class QGraphicsBlockItem(QGraphicsPixmapItem, Block, QObject):
                 elif c.type is ConnectionType.RIGHT:
                     otherConnect.parent.setPos(self.pos() + QPointF(self.pixmap().width() - 5, 0), True)
 
-
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent):
+        self.setZValue(-1)
         self.scene().imgPosibleConnectH.setVisible(False)
         self.scene().imgPosibleConnectV.setVisible(False)
         self.connecting()
@@ -232,6 +261,7 @@ class QGraphicsBlockItem(QGraphicsPixmapItem, Block, QObject):
             self.setPos(otherBlock.pos() + QPointF(-otherBlock.pixmap().width() + 5, 0), True)
         elif self.c.type is ConnectionType.BOTTOMIN:
             self.setPos(otherBlock.pos() + QPointF(17, 33), True)
+        self.updateSize()
 
     def getNumSubBottom(self, n=0, size=0):
         size += self.pixmap().height() - 5
@@ -268,7 +298,8 @@ class QGraphicsBlockItem(QGraphicsPixmapItem, Block, QObject):
                 imgPosibleConnectH.setVisible(True)
                 imgPosibleConnectH.setZValue(1)
             elif self.c.type is ConnectionType.RIGHT:
-                imgPosibleConnectV.setPos(self.c.parent.pos() + QPointF(self.c.parent.pixmap().width() - 5, 0) + QPointF(0, 5))
+                imgPosibleConnectV.setPos(
+                    self.c.parent.pos() + QPointF(self.c.parent.pixmap().width() - 5, 0) + QPointF(0, 5))
                 imgPosibleConnectV.setVisible(True)
                 imgPosibleConnectV.setZValue(1)
             elif self.c.type is ConnectionType.LEFT:
@@ -294,9 +325,10 @@ class QGraphicsBlockItem(QGraphicsPixmapItem, Block, QObject):
         sceneitems = [x for x in sceneitems if isinstance(x, QGraphicsBlockItem)]
         for type, c in iter(self._connections.items()):
             for otherItem in sceneitems:
-                if self is not otherItem:
+                if self is not otherItem and otherItem.isEnabled():
                     for othertype, otherc in iter(otherItem._connections.items()):
-                        if (type is ConnectionType.TOP and othertype in [ConnectionType.BOTTOMIN, ConnectionType.BOTTOM]) or\
+                        if (type is ConnectionType.TOP and othertype in [ConnectionType.BOTTOMIN,
+                                                                         ConnectionType.BOTTOM]) or \
                                 (type is ConnectionType.LEFT and othertype is ConnectionType.RIGHT):
                             dist = c.pos.distance(otherc.pos)
                             if min_dist is None or dist < min_dist:
@@ -308,3 +340,46 @@ class QGraphicsBlockItem(QGraphicsPixmapItem, Block, QObject):
             return min_c, min_cS
         return None, None
 
+    def getInstructionsByType(self, type: ConnectionType):
+        if type in self._connections and self._connections[type].connected():
+            inst = self._connections[type].connect[0].parent.getInstructions()
+            return inst
+        return None
+
+    def getInstructions(self):
+        instRight = self.getInstructionsByType(ConnectionType.RIGHT)
+        instBottom = self.getInstructionsByType(ConnectionType.BOTTOM)
+        instBottomIn = self.getInstructionsByType(ConnectionType.BOTTOMIN)
+        nameControl = self._nameControl
+        if nameControl is "":
+            nameControl = None
+        dic = dict(NAMECONTROL=nameControl, RIGHT=instRight, BOTTOM=instBottom, BOTTOMIN=instBottomIn, VARIABLES=self.getVars(), TYPE=self._type)
+        return self.__functionname, dic
+
+    def getVars(self):
+        vars = []
+        for var in self._vars:
+            value = str(var.value)
+            if var.type in [VariableType.APRILTEXT, VariableType.STRING]:
+                value = '"' + value + '"'
+            vars.append(value)
+        if len(vars) is 0:
+            vars = None
+        return vars
+
+    def isBlockDef(self):
+        return (self.__functionname == "when") or (
+                    len(self._connections) is 1 and ConnectionType.BOTTOMIN in self._connections)
+
+    def setEnabled(self, enabled:bool):
+        super(QGraphicsBlockItem, self).setEnabled(enabled)
+        if not enabled:
+            _, _, _, a = self.img.split()
+            img = self.img.convert('L').convert('RGB')
+            img.putalpha(a)
+        else:
+            img = self.img
+        self.setPixmap(img.toqpixmap())
+        for _type in [ConnectionType.BOTTOMIN, ConnectionType.BOTTOM, ConnectionType.RIGHT]:
+            if _type in self._connections and self._connections[_type].connected():
+                self._connections[_type].connect[0].parent.setEnabled(enabled)

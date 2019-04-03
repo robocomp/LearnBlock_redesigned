@@ -3,9 +3,10 @@ import os
 from PySide2.QtCore import Qt
 from PySide2.QtGui import QKeySequence
 from PySide2.QtWidgets import QGraphicsScene, QGraphicsItem, QGraphicsPixmapItem, QUndoStack, QGraphicsSceneMouseEvent, \
-    QMenu
+    QMenu, QAction
 
 from learnblock import PATHBLOCKSIMG
+from learnblock.scr.QGraphicsBlockItem import QGraphicsBlockItem
 from learnblock.scr.UndoCommands import MoveCommand, AddCommand
 
 
@@ -35,6 +36,18 @@ class Scene(QGraphicsScene):
         redoAction.setShortcuts(QKeySequence.Redo)
         self.popMenu.addAction(redoAction)
 
+        disableAction = QAction(self.tr("&Disable"), self)
+        disableAction.triggered.connect(self.setEnabledMain)
+        self.popMenu.addAction(disableAction)
+
+    def setEnabledMain(self):
+        for item in self.items():
+            if isinstance(item, QGraphicsBlockItem) and item.isBlockDef():
+                if item.functionname == "main":
+                    item.setEnabled(not item.isEnabled())
+                elif item.functionname == "when":
+                    item.setEnabled(not item.isEnabled())
+
     def addItem(self, item: QGraphicsItem, fromStack=False):
         if fromStack:
             super(Scene, self).addItem(item)
@@ -59,3 +72,11 @@ class Scene(QGraphicsScene):
             if self.oldPos is not movingItem.pos():
                 self.undoStack.push(MoveCommand(movingItem, self.oldPos, self))
         super(Scene, self).mouseReleaseEvent(event)
+
+    def getListInstructions(self):
+        list = []
+        for item in self.items():
+            if isinstance(item, QGraphicsBlockItem) and item.isBlockDef() and item.isEnabled():
+                inst = item.getInstructions()
+                list.append(inst)
+        return list

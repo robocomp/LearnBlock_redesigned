@@ -2,6 +2,8 @@ import os, json
 
 from PIL import ImageFont
 
+from learnblock.utils.Language import Language
+
 path = os.path.dirname(os.path.realpath(__file__))
 __version__ = '0.3.8'
 
@@ -13,9 +15,7 @@ PATHFUNCTIONSCONF = os.path.join(path, "functions","configs")
 PATHBLOCKSIMG = os.path.join(path, "blocks","desings")
 PATHBLOCKSCONF = os.path.join(path, "blocks","configs")
 PATHAPRILDICT = os.path.join(os.getenv('HOME'), ".learnblock", "AprilDict.json")
-PATHFONT = os.path.join(path, "font", "BalooChettan-Regular.ttf")
-
-textfont = ImageFont.truetype(PATHFONT, 20)
+PATHFONT = os.path.join(path, "font")
 
 
 def log(func):
