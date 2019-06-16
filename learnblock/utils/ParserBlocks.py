@@ -47,7 +47,6 @@ class ParserBlocks:
 
     def toTBlockCode(self, inst, ntab=1):
         text = inst[0]
-        print(inst[1])
         if inst[1]["TYPE"] in [BlockType.USERFUNCTION, BlockType.LIBRARY]:
             text = inst[0] + "()"
         if inst[1]["TYPE"] is BlockType.CONTROL:

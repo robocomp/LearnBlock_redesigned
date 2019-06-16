@@ -28,17 +28,17 @@ class Scene(QGraphicsScene):
 
     def createActions(self):
         self.popMenu = QMenu()
-        undoAction = self.undoStack.createUndoAction(self, self.tr("&Undo"))
-        undoAction.setShortcuts(QKeySequence.Undo)
-        self.popMenu.addAction(undoAction)
+        self.undoAction = self.undoStack.createUndoAction(self, self.tr("&Undo"))
+        self.undoAction.setShortcuts(QKeySequence.Undo)
+        self.popMenu.addAction(self.undoAction)
 
-        redoAction = self.undoStack.createRedoAction(self, self.tr("&Redo"))
-        redoAction.setShortcuts(QKeySequence.Redo)
-        self.popMenu.addAction(redoAction)
+        self.redoAction = self.undoStack.createRedoAction(self, self.tr("&Redo"))
+        self.redoAction.setShortcuts(QKeySequence.Redo)
+        self.popMenu.addAction(self.redoAction)
 
-        disableAction = QAction(self.tr("&Disable"), self)
-        disableAction.triggered.connect(self.setEnabledMain)
-        self.popMenu.addAction(disableAction)
+        self.disableAction = QAction(self.tr("&Disable"), self)
+        self.disableAction.triggered.connect(self.setEnabledMain)
+        self.popMenu.addAction(self.disableAction)
 
     def setEnabledMain(self):
         for item in self.items():
@@ -55,9 +55,10 @@ class Scene(QGraphicsScene):
             self.undoStack.push(AddCommand(item, self))
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
-        if event.button() is Qt.MouseButton.RightButton:
-            self.popMenu.exec_(event.screenPos())
+
         movingItem = self.itemAt(event.scenePos(), self.view.transform())
+        if movingItem is None and event.button() is Qt.MouseButton.RightButton:
+            self.popMenu.exec_(event.screenPos())
         if movingItem is not None and event.button() is Qt.MouseButton.LeftButton:
             self.oldPos = movingItem.pos()
         self.clearSelection()

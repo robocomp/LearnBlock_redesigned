@@ -5,13 +5,13 @@ import json
 import os
 import tempfile
 
-from PySide2.QtCore import QSize
+from PySide2.QtCore import QSize, Slot
 from PySide2.QtGui import QPaintEvent, QIcon
 from PySide2.QtWidgets import QPushButton
 
 from learnblock.scr.QGraphicsBlockItem import QGraphicsBlockItem
 from learnblock.utils.Block import Block, ConfigPathtoBlockPath
-from learnblock.utils.Connection import Connection
+from learnblock.utils.Connection import Connection, loadConnection
 from learnblock.utils.Language import Language
 from learnblock.utils.Types import BlockType, VariableType, BlockImgType, ConnectionType, Colors
 from learnblock.utils.Variable import Variable
@@ -57,6 +57,7 @@ class ButtonBlock(QPushButton, Block):
         self._parent.ui.splitter.splitterMoved.connect(self.updateIconSize)
         self.clicked.connect(self.on_clickedButton)
 
+    @Slot()
     def changeLanguage(self):
         _varstext = []
         for v in self._Variables:
@@ -78,13 +79,8 @@ class ButtonBlock(QPushButton, Block):
         self.setToolTip(textout)
 
     def initConections(self):
-        with open(self._imgfileconf, "r") as f:
-            conf = json.load(f)
-            self._typeImg = BlockImgType.fromString(conf["type"])
-            self._connections_conf = conf
-            for p in conf["points"]:
-                _type = ConnectionType.fromString(p["type"])
-                self._connections[_type] = Connection(Point(p["x"], p["y"]), self, _type)
+        self._connections, self._connections_conf = loadConnection(_imgfileconf=self._imgfileconf, cls=self)
+        self._typeImg = BlockImgType.fromString(self._connections_conf["type"])
 
     def _initTranslations(self):
         if self._language.language.upper() not in self._translations.keys():
@@ -150,10 +146,15 @@ class ButtonBlock(QPushButton, Block):
         # self.setIcon(QIcon(self.tmpFile))
         self.setStyleSheet("QPushButton { text-align: left; }")
 
+    @Slot()
     def on_clickedButton(self):
-        scene = self._parent.scene
+        scene = self.scene
         item = QGraphicsBlockItem(_parent=self, _imgfile=self.tmpFile, _functionname=self._functionmame,
                                   _translations=self._translations, _vars=copy.copy(self._Variables),
                                   _connections=self._connections_conf, _type=self._type,
                                   _typeIMG=self._typeImg)
         scene.addItem(item)
+
+    @property
+    def scene(self):
+        return self._parent.scene

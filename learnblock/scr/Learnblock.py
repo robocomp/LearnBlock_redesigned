@@ -4,12 +4,14 @@ import sys
 import traceback
 
 from PySide2.QtCore import QTranslator, QLibraryInfo, Slot
-from PySide2.QtWidgets import QMainWindow, QApplication, QMessageBox
+from PySide2.QtWidgets import QMainWindow, QApplication, QMessageBox, QDialog
 from googletrans import LANGUAGES
 
 from learnblock import PATHLANGUAGES
 from learnblock.guis import Learnblock
+from learnblock.scr.AddWhenGui import AddWhenGui
 from learnblock.scr.ButtonBlock import ButtonBlock
+from learnblock.scr.QGraphicsBlockItem import QGraphicsBlockItem
 from learnblock.scr.Scene import Scene
 from learnblock.scr.View import View
 from learnblock.utils.Functions import load_blocks_Config
@@ -56,10 +58,14 @@ class LearnBlock(QMainWindow):
         self.translations = AllTranslations()
         self.translations.updated.connect(self.saveConfig)
         self.ui.block2textpushButton.clicked.connect(self.blocksToText)
+        self.ui.addWhenpushButton.clicked.connect(self.addWhen)
 
         self.showMaximized()
         self.initBlocks()
         self.language.changed.emit("en")
+        self.add_when_gui = AddWhenGui()
+        self.add_when_gui.ui.pushButtonOK.clicked.connect(self.retaddWhen)
+        self.add_when_gui.ui.pushButtonCancel.clicked.connect(self.retaddWhen)
 
         r = self.app.exec_()
         sys.exit(r)
@@ -82,6 +88,23 @@ class LearnBlock(QMainWindow):
         for v in tables:
             v.setColumnWidth(0, width - 20)
 
+    @Slot()
+    def addWhen(self):
+        self.add_when_gui.open()
+
+    def retaddWhen(self):
+
+        button = self.sender()
+        if button is self.add_when_gui.ui.pushButtonOK:
+            block = self.add_when_gui.block
+            item = QGraphicsBlockItem.fromBlock(block,"when",self.add_when_gui.translations,self.add_when_gui.getConfig())
+            # item = QGraphicsBlockItem(_parent=None, _imgfile=self.tmpFile, _functionname=self._functionmame,
+            #                           _translations=self._translations, _vars=copy.copy(self._Variables),
+            #                           _connections=self._connections_conf, _type=self._type,
+            #                           _typeIMG=self._typeImg)
+            self.scene.addItem(item=item)
+        else:
+            self.add_when_gui.close()
     def initTranslators(self):
         combobox = self.ui.language
         combobox.clear()
@@ -184,7 +207,6 @@ class LearnBlock(QMainWindow):
         code = self._parserblocks.parserBlocks(blocks)
         self.ui.textCode.clear()
         self.ui.textCode.setText(text + code)
-
 
 
 if __name__ == '__main__':

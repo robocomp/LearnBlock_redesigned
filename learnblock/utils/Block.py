@@ -105,7 +105,7 @@ class Block:
     def id(self):
         return self._id
 
-    def renderImgBlock(self):
+    def renderImg(self):
         img = copy.copy(self._img)
         varText = ""
         if BlockType.isfunction(self._type) or \
@@ -120,7 +120,6 @@ class Block:
         text1Size = self.textfont.font.getsize(text1)[0]
         text2Size = self.textfont.font.getsize(self.text2)[0]
         textSize = max([text1Size, text2Size])
-
         if self._typeIMG is BlockImgType.COMPLEXBLOCK:
 
             left = img[0:img.shape[0], 0:60]
@@ -173,10 +172,10 @@ class Block:
         draw.text(xy=(15, 3), text=text1, fill=(0, 0, 0, 255), font=self.textfont.font)
         draw.text((15, im.height - 35), self.text2, (0, 0, 0, 255), font=self.textfont.font)
 
-
-
         self._showImg = im
 
+    def renderImgBlock(self):
+        self.renderImg()
         self.imgchanged.emit()
 
     def updatehover(self, im):

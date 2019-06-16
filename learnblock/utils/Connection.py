@@ -1,8 +1,21 @@
+import json
+
 from PySide2.QtCore import Signal, QObject
 
-from learnblock.utils.Types import ConnectionType, BlockType
+from learnblock.utils.Types import ConnectionType, BlockType, BlockImgType
 from learnblock.utils.point import Point
 
+
+def loadConnection(_imgfileconf: str, cls):
+    _connections = {}
+    with open(_imgfileconf, "r") as f:
+        conf = json.load(f)
+        _typeImg = BlockImgType.fromString(conf["type"])
+        _connections_conf = conf
+        for p in conf["points"]:
+            _type = ConnectionType.fromString(p["type"])
+            _connections[_type] = Connection(Point(p["x"], p["y"]), cls, _type)
+    return _connections, _connections_conf
 
 class Connection(object):
     """

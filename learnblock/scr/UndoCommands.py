@@ -60,6 +60,7 @@ class DeleteCommand(QUndoCommand):
 
     def __init__(self, item: QGraphicsBlockItem, scene: QGraphicsScene, parent: QUndoCommand = None):
         self._item = item
+        self.otheritems=item.getDependsItems()[1:]
         self._scene = scene
         super(DeleteCommand, self).__init__(parent)
 
@@ -68,10 +69,18 @@ class DeleteCommand(QUndoCommand):
         self._item.c, self._item.cS = self._item.closestItem()
         self._item.connecting()
         self._scene.update()
+        for item in self.otheritems:
+            self._scene.addItem(item, True)
+            self._item.c, self._item.cS = item.closestItem()
+            self._item.connecting()
+            self._scene.update()
+
         if self._item.functionname == "main":
             self._item._parent.setEnabled(False)
 
     def redo(self):
+        for item in reversed(self.otheritems):
+            self._scene.removeItem(item)
         self._scene.removeItem(self._item)
         if self._item.functionname == "main":
             self._item._parent.setEnabled(True)

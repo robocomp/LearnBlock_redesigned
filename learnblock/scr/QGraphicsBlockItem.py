@@ -2,7 +2,7 @@ import json
 
 from PIL import Image
 from PySide2.QtGui import QMouseEvent
-from PySide2.QtCore import QObject, Qt, QPointF, QTimer
+from PySide2.QtCore import QObject, Qt, QPointF, QTimer, Slot
 from PySide2.QtGui import QPixmap
 from PySide2.QtGui import QImage
 from PySide2.QtWidgets import QGraphicsPixmapItem, QGraphicsItem, QMenu, QAction, QGraphicsSceneMouseEvent, \
@@ -11,7 +11,7 @@ from PySide2.QtWidgets import QGraphicsPixmapItem, QGraphicsItem, QMenu, QAction
 from learnblock.scr.UndoCommands import DeleteCommand
 from learnblock.utils import PILImagetoCV2Image
 from learnblock.utils.Block import Block
-from learnblock.utils.Connection import Connection
+from learnblock.utils.Connection import Connection, loadConnection
 from learnblock.utils.Language import Language
 from learnblock.utils.Types import BlockType, BlockImgType, ConnectionType, VariableType
 from learnblock.utils.point import Point
@@ -27,7 +27,7 @@ class KeyPressEater(QObject):
 class QGraphicsBlockItem(QGraphicsPixmapItem, Block, QObject):
 
     def __init__(self, _parent, _imgfile: str, _functionname: str, _translations: dict, _vars: list, _connections: dict,
-                 _type: BlockType, _typeIMG: BlockImgType, _nameControl: str = ""):
+                 _type: BlockType, _typeIMG: BlockImgType, _nameControl: str = "", img=None):
         self._parent = _parent
         self._translations = _translations
         self._vars = _vars
@@ -44,7 +44,8 @@ class QGraphicsBlockItem(QGraphicsPixmapItem, Block, QObject):
         QObject.__init__(self)
 
         QGraphicsPixmapItem.__init__(self)
-        img = PILImagetoCV2Image(Image.open(_imgfile))
+        if img is None:
+            img = PILImagetoCV2Image(Image.open(_imgfile))
 
         _varstext = self.listValuesVars()
 
@@ -60,6 +61,13 @@ class QGraphicsBlockItem(QGraphicsPixmapItem, Block, QObject):
         self.changeLanguage()
         super(QGraphicsBlockItem, self).setPos(QPointF(0, 0))
         # self.setEnabled(False)
+
+    @classmethod
+    def fromBlock(cls, block, _functionname, _translations, _imgfileconf):
+        _, _connections  = loadConnection(_imgfileconf=_imgfileconf, cls=None)
+
+        return cls(_parent=None, _imgfile="", _functionname=_functionname, _translations=_translations,_vars=[],
+                   _connections=_connections,_type=block._type,_typeIMG=block._typeIMG,_nameControl=block.text2,img=block._img)
 
     def __str__(self):
         return str(self.id)
@@ -77,6 +85,11 @@ class QGraphicsBlockItem(QGraphicsPixmapItem, Block, QObject):
 
     def initPopUpMenu(self):
         self.popMenu = QMenu()
+
+        scene = self._parent.scene
+        self.popMenu.addAction(scene.undoAction)
+        self.popMenu.addAction(scene.redoAction)
+        self.popMenu.addAction(scene.disableAction)
         self.keyPressEater = KeyPressEater(self.popMenu)
         self.popMenu.installEventFilter(self.keyPressEater)
         action1 = QAction(self.tr('Edit'), self)
@@ -113,6 +126,7 @@ class QGraphicsBlockItem(QGraphicsPixmapItem, Block, QObject):
             self.scene().undoStack.push(DeleteCommand(self, self.scene()))
             # self.scene().removeItem(self)
 
+    @Slot()
     def changeLanguage(self):
         self.text1 = self._translations[self._language.language]
 
@@ -272,6 +286,16 @@ class QGraphicsBlockItem(QGraphicsPixmapItem, Block, QObject):
             else:
                 return c.connect[0].parent.getNumSubBottom(n + 1, size)
         return n + 1, size + 1
+
+    def getDependsItems(self):
+        items = [self]
+        for type in [ConnectionType.BOTTOMIN, ConnectionType.BOTTOM]:
+            if type in self._connections:
+                item,_ = self._connections[ConnectionType.BOTTOMIN].connect
+                if item is not None:
+                    items += item.parent.getDependsItems()
+        return items
+
 
     def getNumSub(self, n=0):
         if ConnectionType.BOTTOMIN in self._connections:
